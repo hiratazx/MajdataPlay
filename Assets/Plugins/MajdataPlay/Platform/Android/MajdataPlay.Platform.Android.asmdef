@@ -1,0 +1,17 @@
+{
+    "name": "MajdataPlay.Platform.Android",
+    "rootNamespace": "MajdataPlay.Platform.Android",
+    "references": [],
+    "includePlatforms": [
+        "Android",
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": true,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
