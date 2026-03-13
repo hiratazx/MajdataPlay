@@ -22,6 +22,7 @@ using System.Threading;
 using MajdataPlay.Settings;
 using MajdataPlay.Buffers;
 using Cysharp.Text;
+using MajdataPlay.Game.Utils;
 
 namespace MajdataPlay.Scenes.Game
 {
@@ -253,6 +254,7 @@ namespace MajdataPlay.Scenes.Game
         }
         internal async UniTask LoadNotesIntoPoolAsync(SimaiChart maiChart, CancellationToken token = default)
         {
+            SlideHelper.Init(slidePrefab, SLIDE_PREFAB_MAP, transform);
             List<Task> touchTasks = new();
 
             _noteManager.ResetCounter();
