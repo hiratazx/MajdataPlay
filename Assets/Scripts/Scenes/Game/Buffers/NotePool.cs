@@ -21,12 +21,14 @@ namespace MajdataPlay.Scenes.Game.Buffers
         public int Capacity { get; set; } = 64;
         public bool IsStatic { get; } = true;
 
-        protected bool _isDisposed = false;
-        protected readonly Transform _parent;
-        protected Memory<TimingPoint<TInfo>> _timingPoints = Memory<TimingPoint<TInfo>>.Empty;
-        protected Bucket _storage;
+        protected bool IsDisposed = false;
+        
+        protected Memory<TimingPoint<TInfo>> TimingPoints = Memory<TimingPoint<TInfo>>.Empty;
+        protected Bucket Storage;
 
-        protected uint _flag = 0;
+        protected uint Flag = 0;
+
+        protected readonly Transform Parent;
 
         TimingPoint<TInfo>[] _rentedArrayForTimingPoints = Array.Empty<TimingPoint<TInfo>>();
         TInfo[] _rentedArrayForNotePoolingInfos = Array.Empty<TInfo>();
@@ -39,7 +41,7 @@ namespace MajdataPlay.Scenes.Game.Buffers
         {
             Capacity = capacity;
             var rentedArray = Pool<IPoolableNote<TInfo, TMember>?>.RentArray(capacity);
-            _parent = parent;
+            Parent = parent;
             for (var i = 0; i < capacity; i++)
             {
                 var obj = UnityEngine.Object.Instantiate(prefab, parent);
@@ -51,14 +53,14 @@ namespace MajdataPlay.Scenes.Game.Buffers
                 }
                 rentedArray[i] = noteObj;
             }
-            _storage = new Bucket(rentedArray, capacity);
+            Storage = new Bucket(rentedArray, capacity);
 
             using var orderedTimingPoints = new RentedList<IGrouping<float, TInfo>>(noteInfos.GroupBy(x => x.AppearTiming)
                                                                                              .OrderBy(x => x.Key));
             _rentedArrayForTimingPoints = Pool<TimingPoint<TInfo>>.RentArray(orderedTimingPoints.Count, true);
             _rentedArrayForNotePoolingInfos = Pool<TInfo>.RentArray(noteInfos.Length, true);
-            _timingPoints = _rentedArrayForTimingPoints.AsMemory(0, orderedTimingPoints.Count);
-            var timingPoints = _timingPoints.Span;
+            TimingPoints = _rentedArrayForTimingPoints.AsMemory(0, orderedTimingPoints.Count);
+            var timingPoints = TimingPoints.Span;
             var notePoolingInfoArrayCursor = 0;
             using var cacheList = new RentedList<TInfo>(16);
             foreach (var (i, timingPoint) in orderedTimingPoints.WithIndex())
@@ -84,11 +86,11 @@ namespace MajdataPlay.Scenes.Game.Buffers
         public virtual void OnPreUpdate(float currentSec)
         {
             ThrowIfDisposed();
-            if (_timingPoints.IsEmpty)
+            if (TimingPoints.IsEmpty)
             {
                 return;
             }
-            var timingPoints = _timingPoints.Span;
+            var timingPoints = TimingPoints.Span;
             var i = 0;
             try
             {
@@ -113,7 +115,7 @@ namespace MajdataPlay.Scenes.Game.Buffers
             {
                 if (i != 0)
                 {
-                    _timingPoints = _timingPoints.Slice(i);
+                    TimingPoints = TimingPoints.Slice(i);
                 }
             }
         }
@@ -147,18 +149,18 @@ namespace MajdataPlay.Scenes.Game.Buffers
         {
             ThrowIfDisposed();
             IPoolableNote<TInfo, TMember>? idleNote;
-            if (!_storage.TryRent(out idleNote))
+            if (!Storage.TryRent(out idleNote))
             {
-                switch(_flag)
+                switch(Flag)
                 {
                     case 0:
                         MajDebug.LogWarning($"No more Note can use");
-                        _flag = 1;
+                        Flag = 1;
                         break;
                 }
                 return null;
             }
-            _flag = 0;
+            Flag = 0;
 
             return idleNote;
         }
@@ -172,27 +174,27 @@ namespace MajdataPlay.Scenes.Game.Buffers
         public virtual void Collect(in IPoolableNote<TInfo, TMember> endNote)
         {
             ThrowIfDisposed();
-            _storage.Return(endNote);
+            Storage.Return(endNote);
         }
         public virtual void Dispose()
         {
-            if (_isDisposed)
+            if (IsDisposed)
             {
                 return;
             }
-            _isDisposed = true;
-            _storage.Dispose();
-            _timingPoints = Memory<TimingPoint<TInfo>>.Empty;
+            IsDisposed = true;
+            Storage.Dispose();
+            TimingPoints = Memory<TimingPoint<TInfo>>.Empty;
             _rentedArrayForNotePoolingInfos = Array.Empty<TInfo>();
             _rentedArrayForTimingPoints = Array.Empty<TimingPoint<TInfo>>();
             Pool<TimingPoint<TInfo>>.ReturnArray(_rentedArrayForTimingPoints, true);
             Pool<TInfo>.ReturnArray(_rentedArrayForNotePoolingInfos, true);
-            var childCount = _parent.childCount;
+            var childCount = Parent.childCount;
             for (var i = 0; i < childCount; i++)
             {
                 try
                 {
-                    var child = _parent.GetChild(i);
+                    var child = Parent.GetChild(i);
                     UnityEngine.Object.Destroy(child.gameObject);
                 }
                 catch (Exception e)
@@ -203,7 +205,7 @@ namespace MajdataPlay.Scenes.Game.Buffers
         }
         protected void ThrowIfDisposed()
         {
-            if (_isDisposed)
+            if (IsDisposed)
             {
                 throw new ObjectDisposedException(nameof(NotePool<TInfo, TMember>));
             }

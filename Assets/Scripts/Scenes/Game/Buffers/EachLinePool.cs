@@ -27,11 +27,11 @@ namespace MajdataPlay.Scenes.Game.Buffers
         public override void OnPreUpdate(float currentSec)
         {
             ThrowIfDisposed();
-            if (_timingPoints.IsEmpty)
+            if (TimingPoints.IsEmpty)
             {
                 return;
             }
-            var timingPoints = _timingPoints.Span;
+            var timingPoints = TimingPoints.Span;
             var i = 0;
             try
             {
@@ -54,7 +54,7 @@ namespace MajdataPlay.Scenes.Game.Buffers
             {
                 if (i != 0)
                 {
-                    _timingPoints = _timingPoints.Slice(i);
+                    TimingPoints = TimingPoints.Slice(i);
                 }
             }
         }
@@ -94,18 +94,18 @@ namespace MajdataPlay.Scenes.Game.Buffers
         new EachLineDrop? Dequeue()
         {
             EachLineDrop? idleEachLine;
-            if(!_storage.TryRent(out var poolableNote))
+            if(!Storage.TryRent(out var poolableNote))
             {
-                switch (_flag)
+                switch (Flag)
                 {
                     case 0:
                         MajDebug.LogWarning($"No more EachLine can use");
-                        _flag = 1;
+                        Flag = 1;
                         break;
                 }
                 return null;
             }
-            _flag = 0;
+            Flag = 0;
             idleEachLine = poolableNote as EachLineDrop;
 
             return idleEachLine;
@@ -147,7 +147,7 @@ namespace MajdataPlay.Scenes.Game.Buffers
             ThrowIfDisposed();
             if(endNote is EachLineDrop eachLine)
             {
-                _storage.Return(eachLine);
+                Storage.Return(eachLine);
             }
             else
             {
