@@ -15,15 +15,19 @@ internal static class SlideHelper
 {
     readonly static Dictionary<string, Vector3[][]> _slideBarPositions = new();
     readonly static Dictionary<string, Vector3[][]> _slideStarPositions = new();
+    readonly static Dictionary<string, Vector3[]> _slideOkPositions = new();
 
     readonly static Dictionary<string, Vector3[][]> _slideBarMirrorPositions = new();
     readonly static Dictionary<string, Vector3[][]> _slideStarMirrorPositions = new();
+    readonly static Dictionary<string, Vector3[]> _slideOkMirrorPositions = new();
 
     readonly static Dictionary<string, Quaternion[][]> _slideBarRotations = new();
     readonly static Dictionary<string, Quaternion[][]> _slideStarRotations = new();
+    readonly static Dictionary<string, Quaternion[]> _slideOkRotations = new();
 
     readonly static Dictionary<string, Quaternion[][]> _slideBarMirrorRotations = new();
     readonly static Dictionary<string, Quaternion[][]> _slideStarMirrorRotations = new();
+    readonly static Dictionary<string, Quaternion[]> _slideOkMirrorRotations = new();
 
     static bool _isInited = false;
     public static void Init(GameObject[] prefabs, 
@@ -40,8 +44,13 @@ internal static class SlideHelper
             var isWifi = prefab.name == "Slide_Wifi";
             using var totalBarPositions = new RentedList<Vector3[]>();
             using var totalBarRotations = new RentedList<Quaternion[]>();
+
             using var totalStarPositions = new RentedList<Vector3[]>();
             using var totalStarRotations = new RentedList<Quaternion[]>();
+
+            using var slideOkPositions = new RentedList<Vector3>();
+            using var slideOkRotations = new RentedList<Quaternion>();
+
             using var barPositions = new RentedList<Vector3>();
             using var barRotations = new RentedList<Quaternion>();
             using var starPositions = new RentedList<Vector3>();
@@ -136,6 +145,9 @@ internal static class SlideHelper
                         barPositions.Add(bar.transform.position);
                         barRotations.Add(bar.transform.rotation);
                     }
+                    var slideOk = slideDrop.Transform.GetChild(slideDrop.Transform.childCount - 1);
+                    slideOkPositions.Add(slideOk.position);
+                    slideOkRotations.Add(slideOk.rotation);
                     starPositions.Add(NoteHelper.GetTapPosition(j, 4.8f));
                     for (var i = 0; i < slideBars.Count; i++)
                     {
@@ -175,16 +187,24 @@ internal static class SlideHelper
                     _slideStarPositions.Add(slideType, totalStarPositions.ToArray());
                     _slideStarRotations.Add(slideType, totalStarRotations.ToArray());
 
+                    _slideOkPositions.Add(slideType, slideOkPositions.ToArray());
+                    _slideOkRotations.Add(slideType, slideOkRotations.ToArray());
+
                     totalBarPositions.Clear();
                     totalBarRotations.Clear();
                     totalStarPositions.Clear();
                     totalStarRotations.Clear();
+                    slideOkPositions.Clear();
+                    slideOkRotations.Clear();
                     goto MIRROR_START;
                 }
                 _slideBarMirrorPositions.Add(slideType, totalBarPositions.ToArray());
                 _slideBarMirrorRotations.Add(slideType, totalBarRotations.ToArray());
                 _slideStarMirrorPositions.Add(slideType, totalStarPositions.ToArray());
                 _slideStarMirrorRotations.Add(slideType, totalStarRotations.ToArray());
+
+                _slideOkMirrorPositions.Add(slideType, slideOkPositions.ToArray());
+                _slideOkMirrorRotations.Add(slideType, slideOkRotations.ToArray());
             }
         }
         _isInited = true;
@@ -201,6 +221,8 @@ internal static class SlideHelper
                 SlideType = slideType,
                 StartPos = startPos,
                 IsMirror = true,
+                SlideOkPosition = _slideOkMirrorPositions[slideType][startPos],
+                SlideOkRotation = _slideOkMirrorRotations[slideType][startPos],
             };
         }
         else
@@ -213,6 +235,8 @@ internal static class SlideHelper
                 SlideType = slideType,
                 StartPos = startPos,
                 IsMirror = false,
+                SlideOkPosition = _slideOkPositions[slideType][startPos],
+                SlideOkRotation = _slideOkRotations[slideType][startPos],
             };
         }
     }
@@ -222,6 +246,9 @@ internal static class SlideHelper
         public string SlideType { get; init; }
         public int StartPos { get; init; }
         public bool IsMirror { get; init; }
+
+        public Vector3 SlideOkPosition { get; init; }
+        public Quaternion SlideOkRotation { get; init; }
 
         public ReadOnlySpan<Vector3> SlideBarPositions => _slideBarPositions ?? ReadOnlySpan<Vector3>.Empty;
         public ReadOnlySpan<Quaternion> SlideBarRotations => _slideBarRotations ?? ReadOnlySpan<Quaternion>.Empty;
