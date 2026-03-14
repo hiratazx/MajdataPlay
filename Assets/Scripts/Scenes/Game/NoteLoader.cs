@@ -1,28 +1,29 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using UnityEngine;
-using MajSimai;
+﻿using Cysharp.Text;
 using Cysharp.Threading.Tasks;
-using System.Threading.Tasks;
-using System.Runtime.CompilerServices;
-using MajdataPlay.Scenes.Game.Utils;
+using MajdataPlay.Buffers;
 using MajdataPlay.Collections;
+using MajdataPlay.Game.Utils;
+using MajdataPlay.IO;
+using MajdataPlay.Numerics;
 using MajdataPlay.Scenes.Game.Buffers;
+using MajdataPlay.Scenes.Game.Notes;
+using MajdataPlay.Scenes.Game.Notes.Behaviours;
+using MajdataPlay.Scenes.Game.Notes.Controllers;
 using MajdataPlay.Scenes.Game.Notes.Slide;
 using MajdataPlay.Scenes.Game.Notes.Slide.Utils;
 using MajdataPlay.Scenes.Game.Notes.Touch;
-using MajdataPlay.Scenes.Game.Notes.Behaviours;
-using MajdataPlay.Scenes.Game.Notes.Controllers;
-using MajdataPlay.IO;
-using MajdataPlay.Numerics;
-using MajdataPlay.Scenes.Game.Notes;
-using System.Buffers;
-using System.Threading;
+using MajdataPlay.Scenes.Game.Utils;
 using MajdataPlay.Settings;
-using MajdataPlay.Buffers;
-using Cysharp.Text;
-using MajdataPlay.Game.Utils;
+using MajSimai;
+using System;
+using System.Buffers;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Threading;
+using System.Threading.Tasks;
+using UnityEngine;
+using static UnityEngine.Rendering.DebugUI;
 
 namespace MajdataPlay.Scenes.Game
 {
@@ -1108,7 +1109,7 @@ namespace MajdataPlay.Scenes.Game
                 }
 
                 IConnectableSlide? parent = null;
-                using var subSlides = new RentedList<SlideDrop>();
+                using var subSlides = new RentedList<SlidePoolingInfo>();
                 float totalLen = (float)preprocessSubSlides.Select(x => x.SlideTime).Sum();
                 float startTiming = (float)preprocessSubSlides[0].SlideStartTime;
                 float totalSlideLen = 0;
@@ -1128,7 +1129,7 @@ namespace MajdataPlay.Scenes.Game
                             throw new InvalidOperationException("不允许Wifi Slide作为Connection Slide的一部分");
                         }
                         var result = CreateWifi(timing, preprocessSubSlides[i], note.Count);
-                        sliObj = result.SlideInstance;
+                        sliObj = result.Instance!;
                         foreach(var starInfo in result.StarInfos)
                         {
                             if(starInfo is null)
@@ -1149,12 +1150,12 @@ namespace MajdataPlay.Scenes.Game
                             IsGroupPart = isConn,
                             IsGroupPartHead = isGroupHead,
                             IsGroupPartEnd = isGroupEnd,
-                            Parent = parent,
-                            StartTiming = startTiming
+                            Parent = null,
+                            StartTiming = startTiming,
+                            MemberCount = preprocessSubSlides.Count
                         };
                         var result = CreateSlide(timing, preprocessSubSlides[i], info, note.Count, ref extraRotation);
-                        parent = result.SlideInstance;
-                        sliObj = result.SlideInstance;
+                        parent = result.Instance;
                         foreach (var starInfo in result.StarInfos)
                         {
                             if (starInfo is null)
@@ -1163,13 +1164,13 @@ namespace MajdataPlay.Scenes.Game
                             }
                             eachNotes.Add(starInfo);
                         }
-                        subSlides.Add(result.SlideInstance);
+                        subSlides.Add(result.PoolingInfo);
                         if (i == 0)
                         {
                             slideResult = result;
                         }
                     }
-                    AddSlideToQueue(timing, sliObj);
+                    //AddSlideToQueue(timing, sliObj);
                 }
                 long judgeQueueLen = 0;
                 var slideCount = subSlides.Count;
@@ -1179,7 +1180,7 @@ namespace MajdataPlay.Scenes.Game
                     var isEnd = i == slideCount - 1;
                     var table = SlideTables.FindTableByName(s.SlideType);
 
-                    totalSlideLen += s.SlideLength;
+                    totalSlideLen += s.Metadata.SlideBarPositions.Length + 1;
                     if (isEnd)
                     {
                         judgeQueueLen += table!.JudgeQueue.Length;
@@ -1192,11 +1193,7 @@ namespace MajdataPlay.Scenes.Game
                 foreach(var subSlide in subSlides)
                 {
                     //subSlide.ConnectInfo.TotalSlideLen = totalSlideLen;
-                    subSlide.ConnectInfo.TotalJudgeQueueLen = judgeQueueLen;
-                }
-                foreach (var subSlide in subSlides)
-                {
-                    subSlide.Init();
+                    subSlide.ConnSlideInfo.TotalJudgeQueueLen = judgeQueueLen;
                 }
                 if (slideResult is not null)
                 {
@@ -1245,7 +1242,7 @@ namespace MajdataPlay.Scenes.Game
                 AppearTiming = Math.Min(appearTiming, slideFadeInTiming)
             });
         }
-        private CreateSlideResult<SlideDrop> CreateSlide(SimaiTimingPoint timing,
+        private CreateSlideResult<SlideDrop> CreateSlide(SimaiTimingPoint simaiTiming,
                                                          SubSlideNote note,
                                                          ConnSlideInfo info,
                                                          in int multiple,
@@ -1260,14 +1257,16 @@ namespace MajdataPlay.Scenes.Game
                 slideShape = slideShape.Substring(1);
             }
             var slideIndex = SLIDE_PREFAB_MAP[slideShape];
-            var slide = Instantiate(slidePrefab[slideIndex], notes.transform.GetChild(3));
+            //var slide = Instantiate(slidePrefab[slideIndex], notes.transform.GetChild(3));
             //var slide_star = Instantiate(star_slidePrefab, notes.transform.GetChild(3));
-            var SliCompo = slide.GetComponent<SlideDrop>();
+            var slideBarCount = slidePrefab[slideIndex].transform.childCount - 1;
+            //var SliCompo = slide.GetComponent<SlideDrop>();
+            var slidePoolingInfo = new SlidePoolingInfo();
             var isJustR = NoteCreateHelper.DetectJustType(note.RawContent, out int endPos);
             var startPos = note.StartPosition;
 
             //slide_star.SetActive(true);
-            slide.SetActive(true);
+            //slide.SetActive(true);
             if(extraRotation is null)
             {
                 startPos = NoteCreateHelper.Rotation(startPos, ChartRotation);
@@ -1297,7 +1296,7 @@ namespace MajdataPlay.Scenes.Game
 
                 for (var i = 0; i < multiple; i++)
                 {
-                    var _info = CreateStar(startPos, note, timing);
+                    var _info = CreateStar(startPos, note, simaiTiming);
                     _poolManager.AddTap(_info);
                     starInfos[i] = _info;
                 }
@@ -1305,9 +1304,9 @@ namespace MajdataPlay.Scenes.Game
 
             //SliCompo.SlideType = slideShape;
 
-            if (timing.Notes.Length > 1)
+            if (simaiTiming.Notes.Length > 1)
             {
-                var slides = timing.Notes.FindAll(o => o.Type == SimaiNoteType.Slide);
+                var slides = simaiTiming.Notes.FindAll(o => o.Type == SimaiNoteType.Slide);
                 var index = slides.FindIndex(x => x == note.Origin) + 1;
                 if (slides.Length > 1)
                 {
@@ -1322,38 +1321,97 @@ namespace MajdataPlay.Scenes.Game
                 }
             }
 
-            SliCompo.ConnectInfo = info;
-            SliCompo.IsBreak = note.IsSlideBreak;
-            SliCompo.IsEach = isEach || multiple > 1;
-            SliCompo.IsMirror = isMirror;
-            SliCompo.IsJustR = isJustR;
-            SliCompo.EndPos = endPos;
-            SliCompo.Speed = Math.Abs(NoteSpeed * timing.HSpeed);
-            SliCompo.StartTiming = (float)note.SlideStartTime;
-            SliCompo.StartPos = startPos;
-            //SliCompo._stars = new GameObject[] { slide_star };
-            SliCompo.Timing = (float)timing.Timing;
-            SliCompo.Length = (float)note.SlideTime;
-            SliCompo.IsSlideNoHead = _isSlideNoHead;
-            SliCompo.IsSlideNoTrack = _isSlideNoTrack;
-            SliCompo.Multiple = multiple;
-            //SliCompo.sortIndex = -7000 + (int)((lastNoteTime - timing.Timing) * -100) + sort * 5;
-            var slideBarCount = slide.transform.childCount - 1;
+            //SliCompo.ConnectInfo = info;
+            //SliCompo.IsBreak = note.IsSlideBreak;
+            //SliCompo.IsEach = isEach || multiple > 1;
+            //SliCompo.IsMirror = isMirror;
+            //SliCompo.IsJustR = isJustR;
+            //SliCompo.EndPos = endPos;
+            //SliCompo.Speed = Math.Abs(NoteSpeed * timing.HSpeed);
+            //SliCompo.StartTiming = (float)note.SlideStartTime;
+            //SliCompo.StartPos = startPos;
+            //SliCompo.Timing = (float)timing.Timing;
+            //SliCompo.Length = (float)note.SlideTime;
+            //SliCompo.IsSlideNoHead = _isSlideNoHead;
+            //SliCompo.IsSlideNoTrack = _isSlideNoTrack;
+            //SliCompo.Multiple = multiple;
+            var isBreak = note.IsSlideBreak;
+            var speed = Math.Abs(NoteSpeed * simaiTiming.HSpeed);
+            var startTiming = (float)note.SlideStartTime;
+            var timing = (float)simaiTiming.Timing;
+            var length = (float)note.SlideTime;
+            var isSlideNoHead = _isSlideNoHead;
+            var isSlideNoTrack = _isSlideNoTrack;
+            var sortOrder = 0;
+            var scaleRate = MajInstances.Settings.Debug.NoteAppearRate;
+            var slideFadeInTiming = Math.Max((-3.926913f / speed) + MajInstances.Settings.Game.SlideFadeInOffset + timing, -5f);
+            var appearDiff = (-(1 - (scaleRate * 1.225f)) - (4.8f * scaleRate)) / (Math.Abs(speed) * scaleRate);
+            var appearTiming = timing + appearDiff;
+            var table = SlideTables.FindTableByName(slideShape);
+
+            if (table is null)
+            {
+                throw new MissingComponentException($"Slide table of \"{slideShape}\" is not found");
+            }
+            if (isMirror)
+            {
+                table.Mirror();
+            }
+
+            var posDiff = Math.Abs(1 - startPos);
+            if (posDiff != 0)
+            {
+                table.Diff(posDiff);
+            }
+            var posMetadata = SlideHelper.GetSlidePosMetadata(slideShape, startPos, isMirror);
+
+            isEach = isEach || multiple > 1;
+            
             if (MajInstances.Settings.Display.SlideSortOrder == JudgeModeOption.Classic)
             {
                 _slideLayer += slideBarCount;
-                SliCompo.SortOrder = _slideLayer;
+                sortOrder = _slideLayer;
             }
             else
             {
-                SliCompo.SortOrder = _slideLayer;
+                sortOrder = _slideLayer;
                 _slideLayer -= slideBarCount;
             }
-            //slideLayer += 5;
 
             return new()
             {
-                SlideInstance = SliCompo,
+                Instance = null,
+                PoolingInfo = new()
+                {
+                    Timing = timing,
+                    StartTiming = startTiming,
+                    Length = (float)note.SlideTime,
+                    StartPos = startPos,
+                    EndPos = endPos,
+                    NoteSortOrder = sortOrder,
+                    AppearTiming = Math.Min(appearTiming, slideFadeInTiming),
+                    IsBreak = isBreak,
+                    IsEach = isEach,
+                    IsJustR = isJustR,
+                    IsMirror = isMirror,
+                    IsSlideNoHead = _isSlideNoHead,
+                    IsSlideNoTrack = _isSlideNoTrack,
+                    Multiple = multiple,
+                    SlideType = slideShape,
+                    ConnSlideInfo = info,
+                    Metadata = new(posMetadata.SlideBarPositions, 
+                    posMetadata.SlideBarRotations, 
+                    posMetadata.SlideStarPositions, 
+                    posMetadata.SlideStarRotations)
+                    {
+                        SlideType = posMetadata.SlideType,
+                        StartPos = startPos,
+                        IsMirror = isMirror,
+                        SlideOkPosition = posMetadata.SlideOkPosition,
+                        SlideOkRotation = posMetadata.SlideOkRotation,
+                        SlideTable = table,
+                    }
+                },
                 StarInfos = starInfos
             };
         }
@@ -1443,7 +1501,7 @@ namespace MajdataPlay.Scenes.Game
 
             return new()
             {
-                SlideInstance = WifiCompo,
+                Instance = WifiCompo,
                 StarInfos = starInfos
             };
         }
@@ -2200,7 +2258,8 @@ namespace MajdataPlay.Scenes.Game
         }
         readonly struct CreateSlideResult<T> where T : SlideBase
         {
-            public T SlideInstance { get; init; }
+            public T? Instance { get; init; }
+            public SlidePoolingInfo PoolingInfo { get; init; }
             public TapPoolingInfo?[] StarInfos { get; init; }
         }
     }

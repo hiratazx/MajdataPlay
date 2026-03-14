@@ -213,30 +213,36 @@ internal static class SlideHelper
     {
         if(isMirror)
         {
-            return new(_slideBarMirrorPositions[slideType][startPos],
-                _slideBarMirrorRotations[slideType][startPos],
-                _slideStarMirrorPositions[slideType][startPos],
-                _slideStarMirrorRotations[slideType][startPos])
+            return new()
             {
                 SlideType = slideType,
                 StartPos = startPos,
                 IsMirror = true,
                 SlideOkPosition = _slideOkMirrorPositions[slideType][startPos],
                 SlideOkRotation = _slideOkMirrorRotations[slideType][startPos],
+
+                SlideBarPositions = _slideBarMirrorPositions[slideType][startPos],
+                SlideBarRotations = _slideBarMirrorRotations[slideType][startPos],
+
+                SlideStarPositions = _slideStarMirrorPositions[slideType][startPos],
+                SlideStarRotations = _slideStarMirrorRotations[slideType][startPos]
             };
         }
         else
         {
-            return new(_slideBarPositions[slideType][startPos],
-                _slideBarRotations[slideType][startPos],
-                _slideStarPositions[slideType][startPos],
-                _slideStarRotations[slideType][startPos])
+            return new()
             {
                 SlideType = slideType,
                 StartPos = startPos,
                 IsMirror = false,
                 SlideOkPosition = _slideOkPositions[slideType][startPos],
                 SlideOkRotation = _slideOkRotations[slideType][startPos],
+
+                SlideBarPositions = _slideBarPositions[slideType][startPos],
+                SlideBarRotations = _slideBarRotations[slideType][startPos],
+
+                SlideStarPositions = _slideStarPositions[slideType][startPos],
+                SlideStarRotations = _slideStarRotations[slideType][startPos]
             };
         }
     }
@@ -250,23 +256,9 @@ internal static class SlideHelper
         public Vector3 SlideOkPosition { get; init; }
         public Quaternion SlideOkRotation { get; init; }
 
-        public ReadOnlySpan<Vector3> SlideBarPositions => _slideBarPositions ?? ReadOnlySpan<Vector3>.Empty;
-        public ReadOnlySpan<Quaternion> SlideBarRotations => _slideBarRotations ?? ReadOnlySpan<Quaternion>.Empty;
-        public ReadOnlySpan<Vector3> SlideStarPositions => _slideStarPositions ?? ReadOnlySpan<Vector3>.Empty;
-        public ReadOnlySpan<Quaternion> SlideStarRotations => _slideStarRotations ?? ReadOnlySpan<Quaternion>.Empty;
-
-        readonly Vector3[] _slideBarPositions;
-        readonly Quaternion[] _slideBarRotations;
-        readonly Vector3[] _slideStarPositions;
-        readonly Quaternion[] _slideStarRotations;
-
-
-        public SlidePosMetadata(Vector3[] a, Quaternion[] b, Vector3[] c, Quaternion[] d)
-        {
-            _slideBarPositions = a;
-            _slideBarRotations = b;
-            _slideStarPositions = c;
-            _slideStarRotations = d;
-        }
+        public Vector3[] SlideBarPositions { get; init; }
+        public Quaternion[] SlideBarRotations { get; init; }
+        public Vector3[] SlideStarPositions { get; init; }
+        public Quaternion[] SlideStarRotations { get; init; }
     }
 }

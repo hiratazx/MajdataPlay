@@ -6,6 +6,7 @@ namespace MajdataPlay.Scenes.Game.Notes.Slide
 {
     public class ConnSlideInfo
     {
+        public int MemberCount { get; init; }
         /// <summary>
         /// Indicates the total duration of the Slide Group
         /// </summary>
@@ -65,9 +66,13 @@ namespace MajdataPlay.Scenes.Game.Notes.Slide
             get
             {
                 if (Parent is null)
+                {
                     throw new NullReferenceException();
+                }
                 else
+                {
                     return Parent.IsFinished;
+                }
             }
         }
         /// <summary>
@@ -78,9 +83,13 @@ namespace MajdataPlay.Scenes.Game.Notes.Slide
             get
             {
                 if (Parent is null)
+                {
                     throw new NullReferenceException();
+                }
                 else
+                {
                     return Parent.IsPendingFinish;
+                }
             }
         }
         bool _isGroupPartEnd = false;
