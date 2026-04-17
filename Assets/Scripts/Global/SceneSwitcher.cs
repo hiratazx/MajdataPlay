@@ -77,6 +77,12 @@ namespace MajdataPlay
                 OnSceneChanged(this, (CurrentScene, LastScene));
             }
             _canvas.worldCamera = MainCamera;
+#if UNITY_ANDROID || UNITY_IOS
+            // Lock to portrait by default; Game scene's LandscapeGameplayManager
+            // will re-enable landscape rotation if the setting is on.
+            Screen.autorotateToLandscapeLeft = false;
+            Screen.autorotateToLandscapeRight = false;
+#endif
         }
 
         public void SwitchScene(string sceneName, bool autoFadeOut = true)

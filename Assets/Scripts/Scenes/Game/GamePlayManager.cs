@@ -233,7 +233,23 @@ namespace MajdataPlay.Scenes.Game
 #endif
             InputManager.TouchButtonRingEdge = 5.4f;
             MajInstances.SceneSwitcher.HideMV();
+#if UNITY_ANDROID || UNITY_IOS
+            // Initialize landscape auto-rotation support
+            InitLandscapeManager();
+#endif
         }
+#if UNITY_ANDROID || UNITY_IOS
+        LandscapeGameplayManager? _landscapeManager;
+        void InitLandscapeManager()
+        {
+            _landscapeManager = gameObject.AddComponent<LandscapeGameplayManager>();
+            var mainCamera = Camera.main;
+            if (mainCamera != null)
+            {
+                _landscapeManager.Init(mainCamera, _mainDisplayer);
+            }
+        }
+#endif
         void Start()
         {
             _noteManager = Majdata<NoteManager>.Instance!;

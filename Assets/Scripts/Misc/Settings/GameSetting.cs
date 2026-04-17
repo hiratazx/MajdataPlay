@@ -183,6 +183,10 @@ namespace MajdataPlay.Settings
         
         [Step("0.01")]
         public float SubDisplayScale { get; set; } = 1f;
+#if UNITY_ANDROID || UNITY_IOS
+        
+        public bool AutoRotateLandscape { get; set; } = true;
+#endif
         public GameplayScreenRotationAngleOption GameplayScreenRotationAngle { get; set; } = GameplayScreenRotationAngleOption.Zero;
 
         [OptionEnumerator(typeof(EngineEnumSettingEnumerator))]
